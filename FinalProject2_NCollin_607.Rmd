@@ -4,13 +4,16 @@ author: "Noah Collin"
 date: "11/29/2021"
 output: html_document
 ---
+## *Titanic Predictions*
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-https://www.youtube.com/watch?v=Zx2TguRHrJE
+
+## Data Source:
 
 https://www.kaggle.com/c/titanic
+
 ```{r libraries}
 library(tidyverse)
 library(stringr)
@@ -18,49 +21,45 @@ library(stringr)
 
 LOAD DATA
 ```{r titanic_Data}
-#TO DO : put this data on github, etc
-titanic_train <- read_csv(file = "titanic\\train.csv")
-titanic_test <- read_csv(file = "titanic\\test.csv")
+#Data would be available locally here:
+#"titanic\\train.csv"
+#"titanic\\test.csv"
+
+titanic_train <- read_csv("https://raw.githubusercontent.com/nono638/607_FinalProject_NCollin/main/titanic/train.csv")
+
+titanic_test <- read_csv("https://raw.githubusercontent.com/nono638/607_FinalProject_NCollin/main/titanic/test.csv")
 #Check the data:
 #str(titanic_test)
 
-dumb1 <- read_csv("https://www.kaggle.com/c/titanic/data?select=test.csv")
-dumb2 <- read_csv("https://www.kaggle.com/c/titanic/data?select=train.csv")
 ```
 
 ## Basic EDA before combining
 
 Column Names:
 ```{r EDA1}
-(names(titanic_train))
-
+(cat("Column Names: ",(names(titanic_train))))
 
 ```
 
 ```{r EDA2}
-median(titanic_train$Age, na.rm = T)
+cat("Training Median:", median(titanic_train$Age, na.rm = T),"\n")
 
-median(titanic_test$Age, na.rm = T)
+cat("Test Median:\t", median(titanic_test$Age, na.rm = T))
 ```
 Interestingly, the medians for the test and train set for Age only have a difference of one.
 
 ## Women and Children First (in the Kaggle Dataset)?
 
 ```{r Women1}
+survived.labels <- c(`0`="Perished", `1`="Survied")
 
-# (ggplot(data = titanic_train[(!(is.na(titanic_train$Sex))),], aes(x = count() color = Sex))+
-#   geom_boxplot()+
-#    ggtitle("Distribution of Men and women who survived, within the Gaggle Training Dataset")+
-#     theme(plot.title = element_text(hjust = 0.5))+
-#   coord_flip())
-
-(ggplot(data = titanic_train[(!(is.na(titanic_train$Sex))),], aes( y = Sex, fill = Sex)) +
+ggplot(data = titanic_train[(!(is.na(titanic_train$Sex))),], aes( y = Sex, fill = Sex)) +
   geom_bar() +
-  facet_wrap(~Survived, nrow=1) +
+  facet_grid(Sex ~Survived , labeller = labeller(Survived = survived.labels)) +
   ggtitle(" Distribution of Men and women who survived (within the Kaggle Training Dataset)")+
-     theme(plot.title = element_text(hjust = 0.5))+
-   coord_flip())
-#TODO Change labels
+     theme(strip.background = element_rect(fill="lightblue", size=1, color="darkblue"),plot.title = element_text(hjust = 0.3))+
+   coord_flip()
+
 ```
 Many more men proportionately perished in the titanic disaster.  This is only a portion of the dataset that Kaggle provided.
 
@@ -70,27 +69,32 @@ ggplot(data = titanic_train[(!(is.na(titanic_train$Age))),], aes(y = Age)) +
   geom_histogram( binwidth = 7.5) + #bin set to 7.5 for "understandability"
    facet_wrap(~Survived, nrow=1) +
   ggtitle(" Distribution by age of who survived (within the Kaggle Training Dataset)")+
-     theme(plot.title = element_text(hjust = 0.5))+
+     theme(strip.background = element_rect(fill="lightblue", size=1, color="darkblue"),plot.title = element_text(hjust = 0.5))+
    coord_flip()
+
+ggplot(data = titanic_train[(!(is.na(titanic_train$Age))),], aes(y = Age)) +
+  geom_histogram() + #bin set to 7.5 for "understandability"
+   facet_grid(.~Survived, labeller = labeller(Survived = survived.labels)) +
+  ggtitle(" Distribution by age of who survived (within the Kaggle Training Dataset)")+
+     theme(strip.background = element_rect(fill="lightblue", size=1, color="darkblue"),plot.title = element_text(hjust = 0.5)) +
+  coord_flip()
+
+
+
 ```
 Actually the relationship isn't so clear for children.  The same can be said for older people, there isn't a clear impact of age and survival of the Titanic disaster from these graphs, to my eye.
 
 
-
+The fare one is interesting, because you might expect outliers in fare to have increased Survivabilty.  I left the in the graph here.
 ```{r FareEDA1}
-ggplot(data = titanic_train[(!(is.na(titanic_train$Fare))),], aes(y = Fare)) +
-  geom_histogram( binwidth = 7.5) + #bin set to 7.5 for "understandability"
-  ggtitle(" Distribution by Fares aboard the Titantic")+
-     theme(plot.title = element_text(hjust = 0.5))+
-   coord_flip()
-
-
-ggplot(data = titanic_train[(!(is.na(titanic_train$Fare))),], aes(y = Fare)) +
-  geom_histogram( binwidth = 7.5) + #bin set to 7.5 for "understandability"
-   facet_wrap(~Survived, nrow=1) +
+ggplot(data = titanic_train[(!(is.na(titanic_train$Fare))),], aes(y = Fare, color = Fare)) +
+  geom_histogram() + #bin set to 7.5 for "understandability"
+   facet_grid(. ~Survived, labeller = labeller(Survived = survived.labels)) +
   ggtitle(" Distribution by Fare of who survived (within the Kaggle Training Dataset)")+
      theme(plot.title = element_text(hjust = 0.5))+
    coord_flip()
+
+
 ```
 
 
@@ -111,28 +115,27 @@ titanic_test$Survived <- NA
 
 titanic_full <- rbind(titanic_train, titanic_test)
 
-table(titanic_full$IsTrainSet)
+#Check above Combining worked:
+#table(titanic_full$IsTrainSet)
 
-str(titanic_full)
+#str(titanic_full)
 
 ```
 
 ## NA values
 
 How many NAs are in the Data?
-We'll make a function to keep tabs on that as we go along, and call the function once here.
+We'll make a function to keep tabs on that as we go along, and call the function once here to test it.  The function will return the name of the DataFrame you called it on and how many NAs it has in each column.
 ```{r howManyNAs}
 #install.packages(stringr)
 library(stringr)
-
-(deparse(substitute(titanic_full)))[1]
 
 printRemainingNAs <- function(df = titanic_full, name = deparse(substitute(df))[1])
   {
 print(str_glue("NAs in {name}:"))
 for (col in 1:ncol(df) ) {
   print(str_glue("{names(df)[col]} : {sum(is.na(df[,col]))}"))
-}
+  }
 }
 
 printRemainingNAs()
@@ -141,15 +144,14 @@ Most of our NAs are in Age.  Cabin has so many NAs as to be essentially worthles
 
 # Cleaning the "Embarked" Column
 
-```{r cleaning_Embarked}
-
-
+```{r cleaning_Embarked1}
 #There are two NA values for Embarked.  Again, we can see this by running printRemainingNAs() or the following line of code:
 table(is.na(titanic_full$Embarked))
+```
 
-#(nrow(titanic_full))
-
-# get the two NA values from embarked.  There's probably a better way to do this but I don't know it.  TODO
+```{r cleaingEmbarked2}
+# get the two NA values from embarked.
+print("Rows Missing Embarked: ")
 for (i in 1:nrow(titanic_full)) {
   if ( is.na(titanic_full$Embarked[i])) {
     print(i)
@@ -173,31 +175,28 @@ table(CabinedPassengers$Embarked)
 ```
 Of the passengers who survived and had a cabin, S is still the mode.
 
-For now, let's make the NA values for embarked S.  This could possibly be improved #TODO
+For now, let's make the NA values for embarked S.  This could possibly be improved.
 ```{r CleanEmbarkWithMode}
 titanic_full[is.na(titanic_full$Embarked),]$Embarked <- "S"
 
 printRemainingNAs(titanic_full)
 ```
 
-
 ## Cleaning Age
-
 
 ```{r cleaning_Age}
 
 table(is.na(titanic_full$Age))
 
-(age.median <- median(titanic_full$Age, na.rm = T))
+(cat("Median Age from all data:",(age.median <- median(titanic_full$Age, na.rm = T))))
 ```
 The median age without null values is 28.  It's the same as our training set.
 
 Cleaning Age with the median might be the simplest way, but its results will be lackluster.
-The following is the code to use this approach, but we will try a different one using a linear regression.
+The following is the code to use this approach, but we will try a different one using a linear regression.  Again, there are 263 NA values.
 ```{r Part1-CleanAgeWithMedian}
 #To just put the median age into the NA values, use the following line:
 #titanic_full[is.na(titanic_full$Age),"Age"] <- age.median
-
 table(is.na(titanic_full$Age))
 ```
 
@@ -218,11 +217,18 @@ outlier_filtered_Age
 ```
 Age has 263 NA values.  So it might make sense to first do a linear regression including survived, where available.  Then we'll do a second linear regression where we don't know if they survived, but that model will benefit from the larger subset of data knowing if they did survive.  This was initially intuitive to me from the "Women and Children" first outset, but the initial EDA graph of the age distributions of those who lived and died detracted from that.  Still, I'm going to proceed in this fashion.
 
-```{r SplittingAgeForLinearRegression}
 
+```{r TrainingAsFactors}
+titanic_train$Sex <- as.factor(titanic_train$Sex)
+titanic_train$Pclass <- as.factor(titanic_train$Pclass)
+titanic_train$Survived <- as.factor(titanic_train$Survived)
+```
+
+
+```{r SplittingAgeForLinearRegression}
 SurvivalKnownWithValidAge <- titanic_train[!(is.na(titanic_train$Age)),]
 SurvivalKnownWithInvalidAge <- titanic_train[is.na(titanic_train$Age),]
-#Make sure no NA Ages:
+#Make sure no NA Ages in the ValidAge:
 table(is.na( SurvivalKnownWithValidAge$Age))
 
 printRemainingNAs(SurvivalKnownWithValidAge)
@@ -236,10 +242,10 @@ printRemainingNAs(SurvivalUnknownWithValidAge)
 
 printRemainingNAs(SurvivalUnknownWithInvalidAge)
 ```
-Now that we've split up the *Ages*, we'll make a liner regression for age using the survival data for our model's equation where it's known.  Then we'll repeat the process where Survival's unknown 
+Now that we've split up the *Ages* by *Survived*, we'll make a linear regression for age using the survival data for our model's equation where it's known.  Then we'll repeat the process where Survival is unknown. 
 
 ```{r LinearRegressionForAgeWithSurvivalData}
-library(tidyverse)
+#library(tidyverse)
 (ggplot(data = SurvivalKnownWithValidAge, aes(y = Age, ))+
   geom_boxplot()+
    ggtitle("Distribution of Age (With Survival known from Kaggle)")+
@@ -260,14 +266,22 @@ Let's model the age of those whose survival status is known with that data:
 ```{r ModelingAndPredcitingAge_SurvialKnown}
 
 #Make sure none of our independent variables have NAs:
-printRemainingNAs(non_Outliers_ValidAge_SurvivalKnown)
+#printRemainingNAs(non_Outliers_ValidAge_SurvivalKnown)
+
+non_Outliers_ValidAge_SurvivalKnown$Survived <- as.factor(non_Outliers_ValidAge_SurvivalKnown$Survived)
 
 fare_equation_ValidAge_SurvialKnown = "Age ~ Pclass + Sex + Fare + SibSp + Parch + Survived"
+fare_equation_ValidAge_SurvialKnown.formula <- as.formula(fare_equation_ValidAge_SurvialKnown)
 #DO use Survived for this subset, survival is known
 Age_model_ValidAge_SurvivalKnown <- lm(
-  formula = fare_equation_ValidAge_SurvialKnown,
+  formula = fare_equation_ValidAge_SurvialKnown.formula,
   data = non_Outliers_ValidAge_SurvivalKnown
 )
+
+#summary(Age_model_ValidAge_SurvivalKnown)
+
+#confint(Age_model_ValidAge_SurvivalKnown$fitted.values)
+
 
 pertinentRowsColumns_Age_SurvivalKnown<- SurvivalKnownWithInvalidAge[,
              c(
@@ -281,13 +295,12 @@ pertinentRowsColumns_Age_SurvivalKnown<- SurvivalKnownWithInvalidAge[,
             ]
 
 
-(PredictedAgesWhereSurvivalStatusIsKnown <- predict(Age_model_ValidAge_SurvivalKnown, newdata = pertinentRowsColumns_Age_SurvivalKnown ))
+PredictedAgesWhereSurvivalStatusIsKnown <- predict(Age_model_ValidAge_SurvivalKnown, newdata = pertinentRowsColumns_Age_SurvivalKnown )
 
-median(PredictedAgesWhereSurvivalStatusIsKnown)
+(cat("Predicted Median Age where Survival Status is known:",median(PredictedAgesWhereSurvivalStatusIsKnown)))
 
 ```
 Our median of our predicted values is sensible.
-
 
 So we figured out the ages of those who had NA Ages when we knew their survival status.  Next will be a) getting this data into the right dataframe in the right place and b) predicting via linear Regression those in the test set whose survival status is unknown from the Kaggle dataset.
 
@@ -311,12 +324,13 @@ non_Outliers_ValidAge_SurvivalUnknown <- SurvivalUnknownWithValidAge[outlier_fil
 ```{r ModelingAndPredcitingAge_SurvialUnknown}
 
 #Make sure none of our independent variables have NAs:
-printRemainingNAs(non_Outliers_ValidAge_SurvivalUnknown)
+#printRemainingNAs(non_Outliers_ValidAge_SurvivalUnknown)
 
 fare_equation_ValidAge_SurvialUnknown = "Age ~ Pclass + Sex + Fare + SibSp + Parch" #+ Survived"
+fare_equation_ValidAge_SurvialUnknown.formula = as.formula(fare_equation_ValidAge_SurvialUnknown)
 #Do NOT use Survived for this subset, survival is unknown
 Age_model_ValidAge_SurvivalUnknown <- lm(
-  formula = fare_equation_ValidAge_SurvialUnknown,
+  formula = fare_equation_ValidAge_SurvialUnknown.formula,
   data = non_Outliers_ValidAge_SurvivalUnknown
 )
 
@@ -335,27 +349,22 @@ pertinentRowsColumns_Age_SurvivalUnknown<- SurvivalUnknownWithInvalidAge[,
             ]
 
 
-(PredictedAgesWhereSurvivalStatusIsUnknown <- predict(Age_model_ValidAge_SurvivalUnknown, newdata = pertinentRowsColumns_Age_SurvivalUnknown ))
+PredictedAgesWhereSurvivalStatusIsUnknown <- predict(Age_model_ValidAge_SurvivalUnknown, newdata = pertinentRowsColumns_Age_SurvivalUnknown )
 
-median(PredictedAgesWhereSurvivalStatusIsUnknown)
+cat("Median Predicted Age where Survival status is uknown:",median(PredictedAgesWhereSurvivalStatusIsUnknown))
 
 ```
 
-So now we can put the ages into the titanicfull dataset.
+So now we can put the ages into the titanic_full dataset.
 ```{r PuttingAgesIntoTitanicFull}
-printRemainingNAs(titanic_full)
-
-beforeReplacement <- (titanic_full[(!(is.na(titanic_full$Survived))) & (is.na(titanic_full$Age)),])
-afterReplacement <- beforeReplacement
-afterReplacement$Age <- PredictedAgesWhereSurvivalStatusIsKnown
-
-printRemainingNAs(titanic_full)
+#printRemainingNAs(titanic_full)
 
 #to get rid of junk above:
-silly_filter <- (!(is.na(titanic_full$Survived))) & (is.na(titanic_full$Age))
-titanic_full[silly_filter,]$Age <- PredictedAgesWhereSurvivalStatusIsKnown
+AgeIsNAandSurivialKnownFilter <- (!(is.na(titanic_full$Survived))) & (is.na(titanic_full$Age))
+titanic_full[AgeIsNAandSurivialKnownFilter,]$Age <- PredictedAgesWhereSurvivalStatusIsKnown
 
-printRemainingNAs(titanic_full)
+#We'll see some Ages have successfully been put back into Titanic_full with the lind below:
+#printRemainingNAs(titanic_full)
 
 AgeisNAAndSurivialUnknownFilter <- (is.na(titanic_full$Survived)) & (is.na(titanic_full$Age))
 table(AgeisNAAndSurivialUnknownFilter)
@@ -365,28 +374,22 @@ titanic_full[AgeisNAAndSurivialUnknownFilter,]$Age <- PredictedAgesWhereSurvival
 printRemainingNAs(titanic_full)
 
 ```
-
+All the NAs in Age have been cleaned up using a linear model.  Mose were predicted using their *Survived* Status, where available.
 ## "Fare" Column
 
-```{r cleaning_Fare}
-
-table(is.na(titanic_full$Fare))
-
-# TODO: use liner regression
-```
 There is one NA value in fare.
 
 Again, we could simply replace that one missing datapoint with the median.  The following would be the code fo that approach.  The simple approach of using the median might be much more sensible for a very large dataset where regressions could be expensive.
 ```{r CleaningFareWithMedian}
-
-(fare.median <- median(titanic_full$Fare, na.rm = T))
+fare.median <- median(titanic_full$Fare, na.rm = T)
+(cat("The median fare in the titanic set, without the two missing data points, is:", fare.median))
 
 #To Apply Median to column, use this line:
 #titanic_full[is.na(titanic_full$Fare),"Fare"] <- fare.median
 ```
 The median fare, without the one missing value, is ~14.45
 
-To Calculate a plausible model, we'll first remove outliers. 
+To Calculate a plausible model, we'll first remove Fare's outliers. 
 ```{r CleaningFareWithOrdinaryLeastSquares}
 
 (ggplot(data = titanic_full[(!(is.na(titanic_full$Fare))),], aes(y = Fare))+
@@ -410,16 +413,14 @@ non_Outliers_Fare <- titanic_full[outlier_filter_Fare,]
 
 Now that outliers have been removed, let's model Fare using several columns.  
 ```{r FareModeling}
-
-str(titanic_full)
-
 #Make sure none of our independent variables have NAs:
 #printRemainingNAs()
 
 fare_equation = "Fare ~ Pclass + Sex + Age + SibSp + Parch + Embarked"
+fare_equation.formula <- as.formula(fare_equation)
 #Don't use Survived because future data won't have it
 fare_model <- lm(
-  formula = fare_equation,
+  formula = fare_equation.formula,
   data = non_Outliers_Fare
 )
 
@@ -436,10 +437,15 @@ pertinentFareRowsColumns<- titanic_full[
             ]
 
 
-(predict(fare_model, newdata = pertinentFareRowsColumns ))
+PredictedFare <- (predict(fare_model, newdata = pertinentFareRowsColumns ))
+
+
+titanic_full[(is.na( titanic_full$Fare)),"Fare"] <- PredictedFare
+
+printRemainingNAs(titanic_full)
 
 ```
-
+The missing fare value has been replaced with its predicted one.
 
 ```{r categorical_cleaning}
 #19:58
@@ -449,8 +455,6 @@ str(titanic_full)
 titanic_full$Pclass <-  as.factor(titanic_full$Pclass)
 titanic_full$Sex <- as.factor(titanic_full$Sex)
 titanic_full$Embarked <- as.factor(titanic_full$Embarked)
-
-
 ```
 
 
@@ -484,7 +488,7 @@ library(randomForest)
 #printRemainingNAs(titanic_train)
 
 titanic_model <- randomForest(formula = Survived.formula, data = titanic_train, ntree = 500, mtry = 3, nodesize = 0.1 * nrow(titanic_train))
-#maybe last paramater is wrong
+#maybe last paramater is wrong.  These paramater were taken googling somehwere, but I lost the link
 
 
 ```
@@ -493,7 +497,7 @@ titanic_model <- randomForest(formula = Survived.formula, data = titanic_train, 
 
 Features.equation <-  "Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
 
-(Survived <-  predict(titanic_model, newdata = titanic_test))
+Survived <-  predict(titanic_model, newdata = titanic_test)
 
 PassengerId <- titanic_test$PassengerId
 
@@ -503,7 +507,7 @@ output.df$Survived <-  Survived
 
 write.csv(output.df, file = "kaggle_submission.csv", row.names = F)
 
-((range(titanic_full$Fare, na.rm = T)))
+#((range(titanic_full$Fare, na.rm = T)))
 ```
 
 ```{r ProportionWhoDie}
@@ -513,6 +517,13 @@ proportionWhoDieInAllData <- table(titanic_full$Survived)[1] / sum(table(titanic
 
 ```
 61 % of the passengers died in all the data where as 64.5% of the passengers died in the Kaggle test set.  I feel like that's possibly a reasonable guess.
+
+
+![This work got a 76% on Kaggle's competition](https://github.com/nono638/607_FinalProject_NCollin/blob/main/76%25%20in%20Kaggle%20Competition.png?raw=true)
+
+## Tableau And API Section - unfinished
+
+Professor, this is where I have to admit I didn't accomplish all I'd set out to do.  I wanted to have a Tableau widget with sliders that could be slid back and forth and you could see where you might live or die on the Titanic.  I felt it was a little silly with my model's ~76% accuracy overall.  I also struggled to make a CSV that would work well with Tableau.  I figured I'd have to generate a lot of fake data and then predict on that with the models made above.  Ultimately I didn't finish this portion.  I'm including it because I succeeded in calling APIs to convert 2021 US Dollars to 1912 Great British Pounds.  And I used a library specifically to make the API call.  So I do think this work could be made to work but I spent most oy my time trying to improve the model above instead of working on this portion.
 
 
 ```{r TableauData}
@@ -622,9 +633,7 @@ tableauDF <-  tableauDF%>%
   mutate(Fare =  (TicketPrice2021Pounds /priceDifference1912To2021Pounds))
 ```
 
-
 There's admittedly some rounding errors going on here, particularly with the 199.96.
-
 
 ```{r RandomForestToTabaleu}
 
@@ -660,7 +669,7 @@ titanic_Tableau_model <- randomForest(formula = Survived.Tableau.formula, data =
 tableauDF$Sex <- as.factor(tableauDF$Sex)
 tableauDF$Pclass <- as.factor(tableauDF$Pclass)
 
-(Predictions2 <-  predict(titanic_Tableau_model, newdata = tableauDF[,c("Age","Sex", "Fare", "Pclass")]))
+Predictions2 <-  predict(titanic_Tableau_model, newdata = tableauDF[,c("Age","Sex", "Fare", "Pclass")])
 
 table(Predictions2)
 
@@ -692,11 +701,3 @@ I tired to convert survived to a numerical and do a linear model.  But it gave b
 write.csv(tableauDF[,c(1:4,7,8)], file = "TableauData.csv", row.names = F)
 ```
 
-
-```{r tree}
-#install.packages("tree")
-library(tree)
-
-
-
-```
